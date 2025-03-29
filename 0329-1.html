@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>彩色單字消除遊戲</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f0f8ff;
+            font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 25px;
+            padding: 30px;
+            max-width: 900px;
+        }
+
+        .word-bubble {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 3px solid rgba(255,255,255,0.5);
+        }
+
+        .word-bubble:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .score-panel {
+            font-size: 28px;
+            margin: 25px;
+            padding: 15px 30px;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        #restartBtn {
+            padding: 12px 25px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ff9f43);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 25px;
+        }
+
+        #restartBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255,107,107,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="score-panel">
+        當前得分: <span id="scoreValue">0</span>
+    </div>
+    <div class="game-board" id="gameBoard"></div>
+    <button id="restartBtn">重新開始遊戲</button>
+
+    <script>
+        const vocabulary = [
+            { en: "Dog", zh: "狗", color: "#FF6B6B" },
+            { en: "Cat", zh: "貓", color: "#4ECDC4" },
+            { en: "Sun", zh: "太陽", color: "#FF9F43" },
+            { en: "Moon", zh: "月亮", color: "#54A0FF" },
+            { en: "Book", zh: "書", color: "#A55EEA" },
+            { en: "Tree", zh: "樹", color: "#2ECC71" },
+            { en: "Car", zh: "汽車", color: "#F368E0" },
+            { en: "Coffee", zh: "咖啡", color: "#EE5253" }
+        ];
+
+        let selectedItems = { en: null, zh: null };
+        let currentScore = 0;
+
+        function initializeGame() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            
+            // 創建混合單字池
+            const wordPool = [];
+            vocabulary.forEach(pair => {
+                wordPool.push({ ...pair, type: 'en' });
+                wordPool.push({ ...pair, type: 'zh' });
+            });
+
+            // 洗牌算法
+            for (let i = wordPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [wordPool[i], wordPool[j]] = [wordPool[j], wordPool[i]];
+            }
+
+            // 創建單字泡泡
+            wordPool.forEach(word => {
+                const bubble = document.createElement('div');
+                bubble.className = 'word-bubble';
+                bubble.style.backgroundColor = word.color;
+                bubble.dataset.type = word.type;
+                bubble.dataset.pairId = word.en;
+                bubble.textContent = word[word.type];
+                bubble.addEventListener('click', handleBubbleClick);
+                gameBoard.appendChild(bubble);
+            });
+        }
+
+        function handleBubbleClick(event) {
+            const bubble = event.target;
+            
+            // 忽略已配對的項目
+            if (bubble.style.opacity === '0') return;
+
+            const type = bubble.dataset.type;
+            
+            if (!selectedItems[type]) {
+                // 選擇第一個項目
+                selectedItems[type] = bubble;
+                bubble.style.transform = 'scale(1.2) rotate(5deg)';
+                bubble.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)';
+            } else {
+                // 檢查是否配對
+                if (selectedItems[type] !== bubble) {
+                    // 取消前一個選擇
+                    resetBubbleStyle(selectedItems[type]);
+                }
+                selectedItems[type] = bubble;
+                bubble.style.transform = 'scale(1.2) rotate(5deg)';
+                bubble.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)';
+            }
+
+            checkPairMatch();
+        }
+
+        function checkPairMatch() {
+            if (selectedItems.en && selectedItems.zh) {
+                if (selectedItems.en.dataset.pairId === selectedItems.zh.dataset.pairId) {
+                    // 正確配對
+                    animateMatchSuccess();
+                    currentScore += 100;
+                    document.getElementById('scoreValue').textContent = currentScore;
+                } else {
+                    // 錯誤配對
+                    animateMatchFail();
+                }
+                resetSelection();
+            }
+        }
+
+        function animateMatchSuccess() {
+            [selectedItems.en, selectedItems.zh].forEach(bubble => {
+                bubble.style.transition = 'all 0.5s';
+                bubble.style.transform = 'scale(0) rotate(360deg)';
+                bubble.style.opacity = '0';
+                setTimeout(() => bubble.remove(), 500);
+            });
+        }
+
+        function animateMatchFail() {
+            [selectedItems.en, selectedItems.zh].forEach(bubble => {
+                bubble.style.animation = 'shake 0.5s';
+                setTimeout(() => bubble.style.animation = '', 500);
+            });
+        }
+
+        function resetSelection() {
+            [selectedItems.en, selectedItems.zh].forEach(bubble => {
+                if (bubble) resetBubbleStyle(bubble);
+            });
+            selectedItems = { en: null, zh: null };
+        }
+
+        function resetBubbleStyle(bubble) {
+            bubble.style.transform = '';
+            bubble.style.boxShadow = '';
+        }
+
+        function resetGame() {
+            currentScore = 0;
+            document.getElementById('scoreValue').textContent = '0';
+            initializeGame();
+        }
+
+        // 初始化遊戲
+        initializeGame();
+        
+        // 綁定重新開始按鈕
+        document.getElementById('restartBtn').addEventListener('click', resetGame);
+
+        // 添加動畫關鍵影格
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                50% { transform: translateX(10px); }
+                75% { transform: translateX(-5px); }
+                100% { transform: translateX(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
